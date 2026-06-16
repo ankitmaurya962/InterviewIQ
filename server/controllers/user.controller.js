@@ -2,13 +2,9 @@ import User from "../models/userModel.js"
 
 export const getCurrentUser = async (req, res) => {
   try {
-    console.log("Inside currentUser");
-
     const userId = req.userId;
-    console.log("userId:", userId);
 
     const user = await User.findById(userId);
-    console.log("user:", user);
 
     if (!user) {
       return res.status(404).json({

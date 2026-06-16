@@ -6,26 +6,26 @@ import { IoSparklesSharp } from "react-icons/io5";
 import { auth, provider } from "../utils/firebase";
 import { getAuth, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import axios from "axios";
+import { useDispatch } from "react-redux";
+import { setUserData } from "../Redux/userSlice";
 
 const Auth = () => {
   const serverURL = "http://localhost:8000";
-
+  const dispatch = useDispatch();
   const handleLogin = async () => {
     try {
       const res = await signInWithPopup(auth, provider);
-      console.log(res);
       const name = res.user.displayName;
-      const email = res.user.email;
-      console.log(name);
-      console.log(email);
+      const email = res.user.email; 
       const result = await axios.post(
         serverURL + "/api/auth/google",
         { name, email },
         { withCredentials: true },
       );
-      console.log(result);
+      dispatch(setUserData(result.data));
     } catch (err) {
       console.log(err);
+      dispatch(setUserData(null));
     }
   };
 
