@@ -1,9 +1,12 @@
-import React from 'react'
+import React from "react";
+import Navbar from "../components/Navbar";
 
 const Home = () => {
   return (
-    <div>home page</div>
-  )
-}
+    <div className="h-screen w-full flex flex-col">
+      <Navbar/>
+    </div>
+  );
+};
 
-export default Home
+export default Home;

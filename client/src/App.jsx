@@ -4,9 +4,10 @@ import Home from "./pages/home";
 import Auth from "./pages/Auth";
 import axios from "axios";
 import { useDispatch } from "react-redux";
+import { setUserData } from "./Redux/userSlice";
 
+export const serverURL = "http://localhost:8000";
 const App = () => {
-  const serverURL = "http://localhost:8000";
   const dispatch = useDispatch();
   useEffect(() => {
     const getUser = async () => {
