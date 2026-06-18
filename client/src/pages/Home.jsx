@@ -15,6 +15,7 @@ import resumeImg from "../assets/resume.png";
 import pdfImg from "../assets/pdf.png";
 import analyticsImg from "../assets/history.png";
 import { BsBarChart, BsFileEarmarkText } from "react-icons/bs";
+import Footer from "../components/Footer";
 
 function Home() {
   const [showAuth, setShowAuth] = useState(false);
@@ -46,7 +47,7 @@ function Home() {
 
             <h1 className="text-5xl md:text-7xl font-bold">
               <span className="text-black">With AI</span>{" "}
-              <span className="text-gray-500">Intelligence</span>
+              <span className="text-green-600">Intelligence</span>
             </h1>
           </motion.div>
 
@@ -122,7 +123,7 @@ function Home() {
                   y: -10,
                   scale: 1.05,
                 }}
-                className={`relative w-[320px] pt-12 bg-white rounded-3xl p-8 shadow-xl transition-all duration-300 hover:shadow-2xl
+                className={`relative w-[320px] pt-12 bg-white rounded-3xl p-8 shadow-xl transition-all duration-300 hover:shadow-2xl hover:border border-green-500
         ${
           index === 0
             ? "-rotate-6 hover:rotate-0"
@@ -132,7 +133,7 @@ function Home() {
         }
       `}
               >
-                <div className="absolute -top-7 left-1/2 w-14 h-14 rounded-2xl bg-black text-white flex items-center justify-center text-2xl mb-6">
+                <div className="absolute -top-7 left-1/2 w-14 h-14 rounded-2xl bg-white border border-green-500 text-green-500 flex items-center justify-center text-2xl mb-6">
                   {moveItem.icon}
                 </div>
 
@@ -302,8 +303,10 @@ function Home() {
             ))}
           </div>
         </div>
+        
         {showAuth && <AuthModel onClose={() => setShowAuth(false)} />}
       </div>
+      <Footer />
     </div>
   );
 }
