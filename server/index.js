@@ -18,9 +18,11 @@ app.use(cors({
 //routes
 import authRoute from "./routes/auth.route.js";
 import userRoute from "./routes/user.route.js";
+import interviewRoute from"./routes/interview.route.js";
 
 app.use("/api/auth", authRoute);
 app.use("/api/user", userRoute);
+app.use("/api/interview", interviewRoute)
 
 const PORT = process.env.PORT || 6000
 app.listen(PORT, ()=>{
