@@ -4,14 +4,19 @@ import { TbDeviceAnalytics } from "react-icons/tb";
 import { motion } from "framer-motion";
 import axios from "axios";
 import { serverURL } from "../App";
+import { useDispatch, useSelector } from "react-redux";
+import { setUserData } from "../Redux/userSlice";
 
 const Step1SetUp = ({ onStart }) => {
+  const { userData } = useSelector((state) => state.user);
+  const dispatch = useDispatch();
   const [role, setRole] = useState("");
   const [experience, setExperience] = useState("");
   const [mode, setMode] = useState("Technical");
   const [resumeFile, setResumeFile] = useState(null);
   const [analysisDone, setAnalysisDone] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [projects, setProjects] = useState([]);
   const [skills, setSkills] = useState([]);
   const [resumeText, setResumeText] = useState("");
@@ -40,9 +45,32 @@ const Step1SetUp = ({ onStart }) => {
     } catch (error) {
       console.log(error);
       console.log(error.response?.data);
+    } finally {
+      setAnalyzing(false);
     }
   };
 
+  const handleOnStart = async () => {
+    try {
+      setLoading(true);
+      const result = await axios.post(
+        serverURL + "/api/interview/generate-questions",
+        { role, experience, mode, resumeText, projects, skills },
+        { withCredentials: true },
+      );
+      console.log(result.data);
+      if (userData) {
+        dispatch(
+          setUserData({ ...userData, credits: result.data.creditsLeft }),
+        );
+      }
+      setLoading(false);
+      onStart(result.data);
+    } catch (error) {
+      setLoading(false);
+      console.log(error);
+    }
+  };
   return (
     <motion.div
       initial={{ opacity: 0, y: 40, scale: 0.95 }}
@@ -224,15 +252,13 @@ const Step1SetUp = ({ onStart }) => {
         )}
         {/* Start Interview */}
         <motion.button
-          whileHover={{
-            scale: 1.03,
-          }}
-          whileTap={{
-            scale: 0.95,
-          }}
-          className="w-full py-3 rounded-xl bg-green-600 text-white font-semibold"
+          onClick={handleOnStart}
+          disabled={!role || !experience || loading}
+          whileHover={{ scale: 1.03 }}
+          whileTap={{ scale: 0.95 }}
+          className="w-full disabled:bg-gray-600 bg-green-600 hover:bg-green-700 text-white py-3 rounded-full text-lg font-semibold transition duration-300 shadow-md"
         >
-          Start Interview
+          {loading ? "Starting..." : "Start Interview"}
         </motion.button>
       </motion.div>
     </motion.div>
