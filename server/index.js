@@ -19,10 +19,12 @@ app.use(cors({
 import authRoute from "./routes/auth.route.js";
 import userRoute from "./routes/user.route.js";
 import interviewRoute from"./routes/interview.route.js";
+import paymentRoute from"./routes/payment.route.js";
 
 app.use("/api/auth", authRoute);
 app.use("/api/user", userRoute);
 app.use("/api/interview", interviewRoute)
+app.use("/api/payment", paymentRoute)
 
 const PORT = process.env.PORT || 6000
 app.listen(PORT, ()=>{
