@@ -8,9 +8,9 @@ import { getAuth, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import axios from "axios";
 import { useDispatch } from "react-redux";
 import { setUserData } from "../Redux/userSlice";
+import { serverURL } from "../App";
 
 const Auth = ({ isModel = false }) => {
-  const serverURL = "http://localhost:8000";
   const dispatch = useDispatch();
   const handleLogin = async () => {
     try {
