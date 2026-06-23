@@ -10,7 +10,7 @@ import InterviewHistory from "./pages/InterviewHistory";
 import Pricing from "./pages/Pricing";
 import InterviewReport from "./pages/InterviewReport";
 
-export const serverURL = "http://localhost:8000";
+export const serverURL = "https://interviewiq-h6lw.onrender.com";
 const App = () => {
   const dispatch = useDispatch();
   useEffect(() => {
