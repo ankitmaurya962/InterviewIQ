@@ -4,7 +4,7 @@ import Home from "./pages/Home";
 import Auth from "./pages/Auth";
 import axios from "axios";
 import { useDispatch } from "react-redux";
-import { setUserData } from "./Redux/userSlice";
+import { setUserData } from "./Redux/userSlice.js";
 import InterviewPage from "./pages/InterviewPage";
 import InterviewHistory from "./pages/InterviewHistory";
 import Pricing from "./pages/Pricing";
