@@ -2,12 +2,12 @@ import { useState, useRef } from "react";
 import { FaMicrophone } from "react-icons/fa";
 import { motion } from "framer-motion";
 import Timer from "./Timer";
-import femaleVideo from "../assets/videos/female-ai.mp4";
+import femaleVideo from "../assets/Videos/female-ai.mp4";
 import { useEffect } from "react";
 import { serverURL } from "../App";
 import { BsArrowRight } from "react-icons/bs";
 import axios from "axios";
-import maleVideo from "../assets/videos/male-ai.mp4";
+import maleVideo from "../assets/Videos/male-ai.mp4";
 
 const Step2Interview = ({ interviewData, onFinish }) => {
   const { interviewId, questions = [], userName } = interviewData || {};
