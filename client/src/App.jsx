@@ -1,11 +1,11 @@
 import React, { useEffect } from "react";
 import { Routes, Route } from "react-router-dom";
-import Home from "./pages/home";
+import Home from "./pages/Home";
 import Auth from "./pages/Auth";
 import axios from "axios";
 import { useDispatch } from "react-redux";
 import { setUserData } from "./Redux/userSlice";
-import InterviewPage from "./pages/interviewPage";
+import InterviewPage from "./pages/InterviewPage";
 import InterviewHistory from "./pages/InterviewHistory";
 import Pricing from "./pages/Pricing";
 import InterviewReport from "./pages/InterviewReport";
