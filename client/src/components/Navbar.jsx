@@ -47,7 +47,7 @@ const Navbar = () => {
         <div className="flex items-center gap-3">
           <RiRobot3Fill className="text-white bg-black p-2 rounded-full text-4xl" />
 
-          <h1 className="text-lg font-semibold text-gray-900">
+          <h1 className="text-lg font-semibold text-gray-900 hidden md:block">
             InterviewIQ.AI
           </h1>
         </div>

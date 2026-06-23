@@ -207,7 +207,7 @@ function Home() {
                   }}
                   className="bg-white rounded-3xl shadow-md hover:shadow-xl transition-all duration-300 p-6"
                 >
-                  <div className="flex items-center gap-6">
+                  <div className="flex flex-col md:flex-row items-center gap-6">
                     <div className="w-40 h-40 flex-shrink-0">
                       <img
                         src={item.image}
