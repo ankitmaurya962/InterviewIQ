@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { serverURL } from "../App";
 import axios from "axios";
 import { useDispatch } from "react-redux";
-import { setUserData } from "../redux/userSlice";
+import { setUserData } from "../redux/userSlice.js";
 
 const plans = [
   {
