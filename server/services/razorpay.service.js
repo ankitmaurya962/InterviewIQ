@@ -1,7 +1,4 @@
-import dotenv from "dotenv"
-dotenv.config()
 import Razorpay from "razorpay";
-
 
 var razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY,
@@ -9,5 +6,3 @@ var razorpay = new Razorpay({
 });
 
 export default razorpay
-
-

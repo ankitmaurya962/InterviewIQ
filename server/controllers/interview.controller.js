@@ -3,6 +3,55 @@ import { askAI } from "../services/openRouter.service.js";
 import fs from "fs";
 import User from "../models/userModel.js";
 import Interview from "../models/interview.model.js";
+import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
+import { createEmbedding } from "../services/embedding.service.js";
+import { pineconeIndex } from "../config/pinecone.js";
+import crypto from "crypto";
+
+const cleanupUploadedFile = (filepath) => {
+  if (filepath && fs.existsSync(filepath)) {
+    fs.unlinkSync(filepath);
+  }
+};
+
+const parseAiJson = (content) => {
+  if (!content || typeof content !== "string") {
+    throw new Error("AI returned an empty response");
+  }
+
+  const stripped = content.replace(/```json/gi, "").replace(/```/g, "").trim();
+
+  try {
+    return JSON.parse(stripped);
+  } catch {
+    const start = stripped.indexOf("{");
+    const end = stripped.lastIndexOf("}");
+
+    if (start !== -1 && end !== -1 && end > start) {
+      return JSON.parse(stripped.slice(start, end + 1));
+    }
+
+    throw new Error("AI returned invalid JSON");
+  }
+};
+
+const dedupeContextText = (matches = []) => {
+  const seen = new Set();
+  const uniqueTexts = [];
+
+  for (const match of matches) {
+    const text = match?.metadata?.text;
+    if (!text) continue;
+
+    const normalized = text.replace(/\s+/g, " ").trim();
+    if (!normalized || seen.has(normalized)) continue;
+
+    seen.add(normalized);
+    uniqueTexts.push(normalized);
+  }
+
+  return uniqueTexts;
+};
 
 export const analyzeResume = async (req, res) => {
   try {
@@ -14,19 +63,60 @@ export const analyzeResume = async (req, res) => {
     const fileBuffer = await fs.promises.readFile(filepath);
     const uint8Array = new Uint8Array(fileBuffer);
 
-    const pdf = await pdfjsLib.getDocument({ data: uint8Array }).promise;
+    const pdf = await pdfjsLib.getDocument({
+      data: uint8Array,
+    }).promise;
 
     let resumeText = "";
-    // Extract text from all pages
+
     for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
       const page = await pdf.getPage(pageNum);
       const content = await page.getTextContent();
 
       const pageText = content.items.map((item) => item.str).join(" ");
+
       resumeText += pageText + "\n";
     }
 
     resumeText = resumeText.replace(/\s+/g, " ").trim();
+
+    if (!resumeText) {
+      cleanupUploadedFile(filepath);
+      return res
+        .status(400)
+        .json({ message: "No text could be extracted from the resume." });
+    }
+
+    const splitter = new RecursiveCharacterTextSplitter({
+      chunkSize: 1000,
+      chunkOverlap: 200,
+    });
+
+    const docs = await splitter.createDocuments([resumeText]);
+
+    const resumeId = crypto.randomUUID();
+
+    const vectors = [];
+
+    for (let i = 0; i < docs.length; i++) {
+      const embedding = await createEmbedding(docs[i].pageContent);
+
+      vectors.push({
+        id: `${resumeId}-${i}`,
+        values: embedding,
+        metadata: {
+          userId: String(req.userId),
+          resumeId,
+          uploadedAt: Date.now(),
+          text: docs[i].pageContent,
+        },
+      });
+    }
+
+    await pineconeIndex.upsert({
+      records: vectors,
+    });
+
 
     const messages = [
       {
@@ -51,10 +141,12 @@ Return strictly JSON:
     ];
 
     const aiResponse = await askAI(messages);
-    const parsed = JSON.parse(aiResponse);
-    fs.unlinkSync(filepath);
+    const parsed = parseAiJson(aiResponse);
+
+    cleanupUploadedFile(filepath);
 
     return res.status(200).json({
+      resumeId,
       role: parsed.role,
       experience: parsed.experience,
       projects: parsed.projects,
@@ -63,25 +155,34 @@ Return strictly JSON:
     });
   } catch (error) {
     console.log(error);
-    if (req.file && fs.existsSync(req.file.path)) {
-      fs.unlinkSync(req.file.path);
-    }
 
-    return res.status(500).json({ message: error.message });
+    cleanupUploadedFile(req.file?.path);
+
+    return res.status(500).json({
+      message: error.message,
+    });
   }
 };
 
 export const generateQuestion = async (req, res) => {
   try {
-    let { role, experience, mode, resumeText, projects, skills } = req.body;
+  
+    let { role, experience, mode, projects, skills, resumeId } = req.body;
     role = role?.trim();
     experience = experience?.trim();
     mode = mode?.trim();
 
+    const normalizedMode = mode?.toLowerCase();
+    if (normalizedMode === "hr") {
+      mode = "HR";
+    } else if (normalizedMode === "technical") {
+      mode = "Technical";
+    }
+
     if (!role || !experience || !mode) {
       return res
         .status(400)
-        .json({ message: "ROle, Experience and Mode are required" });
+        .json({ message: "Role, experience and mode are required" });
     }
 
     const user = await User.findById(req.userId);
@@ -96,26 +197,60 @@ export const generateQuestion = async (req, res) => {
         message: "Not enough credits. Minimum 50 required.",
       });
     }
-
     const projectText =
       Array.isArray(projects) && projects.length ? projects.join(", ") : "None";
 
     const skillsText =
       Array.isArray(skills) && skills.length ? skills.join(", ") : "None";
 
-    const safeResume = resumeText?.trim() || "None";
+    // Create search query
+    const searchQuery = `
+Role: ${role}
+Experience: ${experience}
+Projects: ${projectText}
+Skills: ${skillsText}
+`;
+
+    // Create embedding
+    const queryEmbedding = await createEmbedding(searchQuery);
+
+    // Search Pinecone
+    const searchResults = await pineconeIndex.query({
+      vector: queryEmbedding,
+      topK: 4,
+      includeMetadata: true,
+      filter: {
+        userId: String(req.userId),
+        resumeId,
+      },
+    });
+
+    // Build context
+    const uniqueContextChunks = dedupeContextText(searchResults.matches);
+    const resumeContext =
+      uniqueContextChunks.length > 0
+        ? uniqueContextChunks.join("\n\n")
+        : "No resume context found.";
 
     const userPrompt = `
-    Role: ${role}
-    Experience:${experience}
-    InterviewMode: ${mode}
-    Projects: ${projectText}
-    Skills: ${skillsText}
-    Resume: ${safeResume}`;
+Role: ${role}
+Experience: ${experience}
+InterviewMode: ${mode}
 
+Projects:
+${projectText}
+
+Skills:
+${skillsText}
+
+Resume Context:
+${resumeContext}
+
+Generate interview questions using the resume context.
+`;
     if (!userPrompt.trim()) {
       return res.status(400).json({
-        message: "Pronpt content is empty.",
+        message: "Prompt content is empty.",
       });
     }
 
@@ -146,7 +281,7 @@ Question 3 → medium
 Question 4 → medium  
 Question 5 → hard  
 
-Make questions based on the candidate’s role, experience,interviewMode, projects, skills, and resume details.
+Make questions based on the candidate's role, experience, mode, projects, skills, and resume details.
 `,
       },
       {
@@ -182,7 +317,7 @@ Make questions based on the candidate’s role, experience,interviewMode, projec
       role,
       experience,
       mode,
-      resumeText: safeResume,
+      resumeText: resumeContext,
       questions: questionsArray.map((q, index) => ({
         question: q,
         difficulty: ["easy", "easy", "medium", "medium", "hard"][index],
@@ -208,7 +343,21 @@ export const submitAnswer = async (req, res) => {
   try {
     const { interviewId, questionIndex, answer, timeTaken } = req.body;
     const interview = await Interview.findById(interviewId);
-    const question = interview.questions[questionIndex];
+
+    if (!interview) {
+      return res.status(404).json({ message: "Interview not found" });
+    }
+
+    const index = Number(questionIndex);
+    if (
+      !Number.isInteger(index) ||
+      index < 0 ||
+      index >= interview.questions.length
+    ) {
+      return res.status(400).json({ message: "Invalid question index" });
+    }
+
+    const question = interview.questions[index];
 
     //if no answer
     if (!answer) {
@@ -286,7 +435,7 @@ Answer: ${answer}
     ];
 
     const aiResponse = await askAI(messages);
-    const parsed = JSON.parse(aiResponse);
+    const parsed = parseAiJson(aiResponse);
     question.answer = answer;
     question.confidence = parsed.confidence;
     question.communication = parsed.communication;
@@ -308,7 +457,7 @@ export const finishInterview = async (req, res) => {
     const { interviewId } = req.body;
     const interview = await Interview.findById(interviewId);
     if (!interview) {
-      return res.status(400).json({ message: "failed to find Interview" });
+      return res.status(404).json({ message: "Interview not found" });
     }
 
     const totalQuestions = interview.questions.length;
@@ -405,10 +554,6 @@ export const getInterviewReport = async (req, res) => {
     const avgCorrectness = totalQuestions
       ? totalCorrectness / totalQuestions
       : 0;
-
-    interview.status = "Completed";
-
-    await interview.save();
 
     return res.status(200).json({
       finalScore: interview.finalScore,
